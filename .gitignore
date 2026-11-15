@@ -1,0 +1,51 @@
+# Personal plans and notes (never public)
+PLAN.md
+private/
+notes/
+*.private.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and builds
+node_modules/
+.next/
+dist/
+build/
+__pycache__/
+.venv/
+
+# OS
+.DS_Store
+
+# Next.js / tooling
+/.pnp
+.pnp.*
+/coverage
+/out/
+*.pem
+*.tsbuildinfo
+.vercel
+npm-debug.log*
+
+
+# Local Nessie ids (sandbox)
+/data/nessie-state.json
+
+# Private docs
+PITCH.md
+REPORT.md
+.claude/
+/data/twilio-usage.json
+/data/solana-donor.json
+/data/solana-donations.json
+/data/ledger-state.json
+/data/activity.json
+/data/live-store.json
+/data/ops-state.json
+/data/photon-routes.json
+/data/roster.json
+/data/solana-state.json
+/backups/

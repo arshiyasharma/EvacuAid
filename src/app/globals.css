@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Surfaces */
+  --color-ink: #050506;
+  --color-surface: #0b0b0d;
+  --color-raised: #111114;
+  --color-line: rgb(255 255 255 / 0.07);
+  --color-line-strong: rgb(255 255 255 / 0.12);
+
+  /* Text */
+  --color-fg: #ededee;
+  --color-muted: #a3a3ad;
+  --color-faint: #777781;
+
+  /* Status */
+  --color-help: #ff4d3a;
+  --color-silent: #ffb224;
+  --color-leaving: #5ab0ff;
+  --color-out: #3ee07f;
+  --color-ember: #ff7a1a;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgb(62 224 127 / 0.25);
+}
+
+/* Dot grid, like plotting paper under a map */
+.bg-dots {
+  background-image: radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Fine film grain so flat black never looks flat */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Tiny letter-spaced labels */
+.label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* Glass panel */
+.panel {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.035), rgb(255 255 255 / 0.012));
+  border: 1px solid var(--color-line);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 30px 80px -30px rgb(0 0 0 / 0.8);
+  backdrop-filter: blur(14px);
+}
+
+/* Pulse ring */
+@keyframes ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.pulse-ring {
+  animation: ring 2.4s var(--ease-out-expo) infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.live-dot {
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+.rise {
+  animation: rise 1s var(--ease-out-expo) both;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Radar sweep across the map card */
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.sweep {
+  background: conic-gradient(from 0deg, transparent 0deg, rgb(62 224 127 / 0.14) 40deg, transparent 70deg);
+  animation: sweep 6s linear infinite;
+}
+
+/* Embers drifting up from the fire side */
+@keyframes ember {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--drift), -70vh, 0) scale(0.4);
+    opacity: 0;
+  }
+}
+.ember {
+  position: absolute;
+  bottom: -10px;
+  border-radius: 9999px;
+  background: var(--color-ember);
+  box-shadow: 0 0 10px 2px rgb(255 122 26 / 0.7);
+  animation: ember var(--dur) linear infinite;
+  animation-delay: var(--delay);
+}
+
+/* Light sweep across the map stage */
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+.scanline {
+  background: linear-gradient(180deg, transparent, rgb(62 224 127 / 0.05) 50%, transparent);
+  animation: scan 7s linear infinite;
+}
+
+/* Shimmer on accent text */
+@keyframes shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+.shimmer {
+  background: linear-gradient(90deg, #ededee 0%, #ffb27a 25%, #ff7a1a 40%, #ededee 60%, #ededee 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ring,
+  .live-dot,
+  .rise,
+  .sweep,
+  .ember,
+  .scanline,
+  .shimmer {
+    animation: none;
+  }
+}
+
+/* MapLibre: quiet the default chrome */
+.maplibregl-ctrl-attrib {
+  background: rgb(5 5 6 / 0.6) !important;
+  color: var(--color-faint) !important;
+  font-size: 9px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-muted) !important;
+}
+.maplibregl-ctrl-logo {
+  display: none !important;
+}
+
+/* Story beats on the console map */
+@keyframes story-in {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.98); filter: blur(6px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+.story-in { animation: story-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes story-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.story-bar { transform-origin: left; animation: story-bar linear both; }
+
+/* "Press play" hint on the console */
+@keyframes play-hint {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.play-hint { animation: play-hint 1.6s ease-in-out infinite; }
+
+/* Pitch hero: satellite detections light up in the order they were seen. */
+@keyframes fire-dot {
+  0% { opacity: 0; transform: scale(0.2); }
+  60% { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+.fire-dot { opacity: 0; transform-box: fill-box; transform-origin: center; animation: fire-dot 900ms ease-out forwards; }
+
+/* Pitch film */
+.film-reveal { opacity: 0; transform: translateY(28px); filter: blur(6px); transition: opacity 900ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 900ms ease; }
+.film-reveal.in { opacity: 1; transform: none; filter: none; }
+@keyframes film-in { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+.film-in { opacity: 0; animation: film-in 1200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+@keyframes film-kenburns { from { transform: scale(1.12); } to { transform: scale(1); } }
+.film-kenburns { animation: film-kenburns 14s ease-out forwards; }
+@keyframes film-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+.film-bob { animation: film-bob 1.8s ease-in-out infinite; }
+@keyframes film-swap { from { opacity: 0; transform: translateY(16px) scale(0.99); } to { opacity: 1; transform: none; } }
+.film-swap { animation: film-swap 600ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .film-reveal, .film-in { opacity: 1; transform: none; filter: none; animation: none; transition: none; }
+  .film-kenburns, .film-bob, .film-swap { animation: none; }
+}
