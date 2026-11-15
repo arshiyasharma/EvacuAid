@@ -9,6 +9,7 @@ import {
   AFTER,
   CLAIM_EVACUAID,
   CLAIM_TODAY,
+  HAZARDS,
   DIFFERENT,
   JOURNEY,
   MONEY_PROBLEM,
@@ -121,6 +122,7 @@ export function PitchPage({ stories, cf, points }: { stories: Story[]; cf: Count
       <Problems />
       <Beyond />
       <Solution cf={cf} points={points} />
+      <AnyDisaster />
       <DemoTime stories={stories} />
       <HowItWorks />
       <WhyNow />
@@ -332,6 +334,7 @@ function Solution({ cf, points }: { cf: Counterfactual; points: Point[] }) {
           <h2 className="mt-4 text-[clamp(44px,6vw,96px)] font-medium leading-[0.95] tracking-[-0.05em]">
             One app for <span className="shimmer">both</span>.
           </h2>
+          <p className="mt-4 text-[clamp(18px,1.8vw,22px)] text-muted">Shown on a wildfire. Built for any evacuation.</p>
         </Reveal>
         <Reveal delay={150}>
           <div className="mt-8 grid max-w-[980px] gap-2 text-[16.5px] sm:grid-cols-3">
@@ -598,7 +601,7 @@ function HowItWorks() {
 /** Who goes first: the same formula the console shows on every household. */
 function Priority() {
   const terms = [
-    { sym: "A", text: "when the fire reaches the home (satellite spread rate)" },
+    { sym: "A", text: "when the hazard reaches the home (for fire: satellite spread rate)" },
     { sym: "T", text: "how long they need to leave alone: no car ≥ 240 min, asked for help 360" },
     { sym: "σ", text: "0.35, the fire's timing uncertainty" },
     { sym: "wᵢ", text: "medical 0.6 · can't walk 0.5 · someone left at home 0.4 · 75+ 0.3 · silent 0.3 · kids 0.15 · not English 0.1" },
@@ -726,6 +729,37 @@ function WhyNow() {
           </div>
         </div>
       </Reveal>
+    </section>
+  );
+}
+
+/** Fire is the proof, not the limit. */
+function AnyDisaster() {
+  return (
+    <section className="mx-auto max-w-[1240px] px-6 pb-24">
+      <Reveal>
+        <h2 className="text-[clamp(32px,4vw,56px)] font-medium leading-tight tracking-[-0.04em]">
+          Fire is the proof. <span className="text-muted">Not the limit.</span>
+        </h2>
+        <p className="mt-3 max-w-[60ch] text-[18px] text-muted">
+          Roll call, triage, priority, vans, aid and donor receipts don&apos;t care what the disaster is. Only the feed that says
+          when it reaches each home changes.
+        </p>
+      </Reveal>
+      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {HAZARDS.map((h, i) => (
+          <Reveal key={h.name} delay={i * 80}>
+            <div className={`h-full rounded-3xl border p-5 ${h.live ? "border-ember/40 bg-ember/[0.07]" : "border-line bg-raised/50"}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[20px] font-medium">{h.name}</span>
+                {h.live && <span className="rounded-full bg-ember/20 px-2 py-0.5 font-mono text-[11px] text-ember">DEMO</span>}
+              </div>
+              <div className="mt-2 font-mono text-[13px] text-faint">{h.feed}</div>
+              <div className="mt-2 text-[15px] leading-snug text-muted">{h.note}</div>
+            </div>
+          </Reveal>
+        ))}
+      </div>
     </section>
   );
 }
@@ -1119,7 +1153,7 @@ function Closing() {
           </Link>
         ))}
       </div>
-      <p className="relative mt-12 text-[14px] text-faint">EvacuAid · built solo at HackUMass XIV · Residents simulated; the fire and the streets are real.</p>
+      <p className="relative mt-12 text-[14px] text-faint">EvacuAid · built solo at HackUMass XIV · Shown on the Eaton fire; built for any evacuation. Residents simulated; the fire and the streets are real.</p>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 # EvacuAid
 
-**Out safe. Aid tonight.** EvacuAid finds who can't leave a wildfire, gets them out with operator-approved vans, and gets them fraud-checked relief money the same night, while every donor can see where their gift went.
+**Out safe. Aid tonight.** EvacuAid finds who can't leave a disaster zone (wildfire, flood, hurricane, earthquake), gets them out with operator-approved vans, and gets them fraud-checked relief money the same night, while every donor can see where their gift went.
 
 **Live:** [evacuid.us](https://evacuid.us) · [Pitch](https://evacuid.us/pitch) · [Donate on Solana devnet](https://evacuid.us/donate) · [Solana program](https://explorer.solana.com/address/HZYxz8EF9iqNERbZucuTygzGVHNc9xfrw1YtwEqYBV3?cluster=devnet)
 
@@ -29,7 +29,7 @@ Then I kept reading, and found the second half of the story. The people who surv
 
 ## What it does
 
-EvacuAid is an emergency operations system for a county: one console, one relief fund, one public donation page, one iMessage number.
+EvacuAid is an emergency operations system for a county: one console, one relief fund, one public donation page, one iMessage number. I proved it on a wildfire, but nothing in it is fire-specific: it works for anything that needs people out and aid in, from floods and hurricanes to earthquakes and chemical spills.
 
 ### 1. Get everyone out
 
@@ -44,7 +44,7 @@ EvacuAid is an emergency operations system for a county: one console, one relief
 
 Every household gets a priority score, recomputed every replay minute and shown with its reasons on the operator's console. Two numbers decide it.
 
-**P, the chance the fire wins the race.** Let $A$ be when the fire reaches the home (from the satellite-measured spread rate) and $T$ how long the household needs to get out on its own. Fire timing is uncertain, so $A$ is lognormal with $\sigma = 0.35$ (the fire arrives anywhere from 0.6× to 1.8× the forecast, 90% of the time):
+**P, the chance the fire wins the race.** Let $A$ be when the hazard reaches the home (for a wildfire, from the satellite-measured spread rate) and $T$ how long the household needs to get out on its own. Fire timing is uncertain, so $A$ is lognormal with $\sigma = 0.35$ (the fire arrives anywhere from 0.6× to 1.8× the forecast, 90% of the time):
 
 $$P(\text{trapped}) = P(A < T) = \Phi\left(\frac{\ln T - \ln A}{\sigma}\right)$$
 
@@ -101,11 +101,26 @@ The model alerts from a worst-case forecast (ignition at 1.7 km/h), but scores e
 
 **+176 people**, the same gain in every one of the 200 runs, with a median of **about 4.5 hours** to spare. I made the baseline as generous as I could: it even knows who needs a ride. It still loses, because a one-way alert can't hear "I can't."
 
+## Fire is the proof, not the limit
+
+The roll call, the triage, the priority score, the vans, the aid, the fraud checks and the donor receipts don't care what the disaster is. Only one input changes: the feed that says **when the hazard reaches each home**.
+
+| Disaster | What sets the clock | What changes |
+|---|---|---|
+| **Wildfire** (the demo) | NASA satellite fire detections | Proven on the real Eaton fire |
+| **Flood** | River gauges and flood forecasts | When the water reaches each street |
+| **Hurricane** | Storm-surge and wind forecasts | Days of warning, the same two-way roll call |
+| **Earthquake** | Damage and aftershock reports | No warning: find who's trapped or can't leave a damaged home, and house them tonight |
+| **Chemical spill** | Plume models | Minutes to clear a zone, in every language |
+
+Every one of them leaves the same people behind: no car, a wheelchair, oxygen, no English, no money for a room tonight.
+
 ## What makes it different
 
 | | Evacuation tools | **EvacuAid** |
 |---|---|---|
-| The fire | A modeled fire on a map | The real Eaton fire: 365 NASA detections, the real 3:25 AM order |
+| The disaster | Built around one hazard | Any evacuation: fire, flood, hurricane, earthquake, chemical spill |
+| The proof | A modeled disaster on a map | The real Eaton fire: 365 NASA detections, the real 3:25 AM order |
 | The people | Synthetic households | Real phones. Text EVAC right now and an operator answers |
 | Reaching them | A browser call or a one-way alert | Two-way iMessage, any language, on the phone they already have |
 | Who decides | An algorithm assigns | AI suggests; a person approves every van and every dollar |
@@ -258,4 +273,4 @@ bun --env-file=.env.local scripts/e2e-local.ts      # a full rescue + aid, end t
 
 evacuid.us runs on a Vultr server (Caddy for HTTPS) that tunnels to the operator station. See [deploy/README.md](deploy/README.md) for setup, one-command deploys with automatic rollback, and switching between the server and a laptop.
 
-Fire data: NASA FIRMS (VIIRS, MODIS). Residents in the replay are simulated; the fire, the streets and the timeline are real. In an emergency, call 911.
+Fire data: NASA FIRMS (VIIRS, MODIS). Demonstrated on the Eaton fire; built for any evacuation. Residents in the replay are simulated; the fire, the streets and the timeline are real. In an emergency, call 911.

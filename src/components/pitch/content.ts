@@ -326,7 +326,8 @@ export const STACK = [
 ];
 
 export const DIFFERENT = [
-  ["The fire", "A modeled fire on a map", "The real Eaton fire: 365 NASA detections, the real 3:25 AM order"],
+  ["The disaster", "Built around one hazard", "Any evacuation: fire, flood, hurricane, earthquake, chemical spill"],
+  ["The proof", "A modeled disaster on a map", "The real Eaton fire: 365 NASA detections, the real 3:25 AM order"],
   ["The people", "Synthetic households", "Real phones. Text EVAC right now and an operator answers"],
   ["Reaching them", "A browser call or a one-way alert", "Two-way iMessage, any language, on the phone they already have"],
   ["Who decides", "An algorithm assigns", "AI suggests; a person approves every van and every dollar"],
@@ -450,3 +451,12 @@ export const NESSIE_CALLS: { call: string; why: string }[] = [
 
 export const CLAIM_TODAY = ["Disaster declared", "Claim filed", "Inspection", "Denied or delayed", "Check, maybe"];
 export const CLAIM_EVACUAID = ["Replies to the text", "Bank checks pass", "Money on the card"];
+
+/** Fire is the proof, not the limit: only the hazard feed changes. */
+export const HAZARDS = [
+  { name: "Wildfire", feed: "NASA satellite detections", note: "Proven on the Eaton fire", live: true },
+  { name: "Flood", feed: "River gauges, flood forecasts", note: "When water reaches each home" },
+  { name: "Hurricane", feed: "Storm-surge and wind forecasts", note: "Days of warning, same roll call" },
+  { name: "Earthquake", feed: "Damage and aftershock reports", note: "No warning: find who's trapped, house them tonight" },
+  { name: "Chemical spill", feed: "Plume models", note: "Minutes to clear a zone" },
+];
