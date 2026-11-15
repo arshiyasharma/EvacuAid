@@ -8,9 +8,11 @@ import type { LiveHousehold } from "./store";
 export const isDemoPhone = (phone: string) => /^\+1\d{3}555\d{4}$/.test(phone);
 
 export function redactHousehold(h: LiveHousehold): LiveHousehold {
-  if (isDemoPhone(h.phone)) return h;
+  // A tracking code is only for the resident who got it by text.
+  if (isDemoPhone(h.phone)) return { ...h, track: undefined };
   return {
     ...h,
+    track: undefined,
     name: "Resident",
     phone: "",
     summary: undefined,

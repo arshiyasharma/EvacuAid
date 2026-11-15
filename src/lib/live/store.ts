@@ -3,13 +3,14 @@
 
 import { aidDecisionText, ALERT, newConv, startAid, step, T, type AidSize, type Case, type Conv, type Step } from "../agent/conversation";
 import { converseWithGemini } from "../gemini";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { currentRun } from "../activity";
 import { tigerEvent, type TigerKind } from "../tiger";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { SIM_HOUSEHOLDS } from "../replay/households";
+import { FLEET, SHELTER } from "../replay/fleet";
 import { normalizePhone } from "./phone";
-import type { Household, Needs } from "../types";
+import type { Household, LngLat, Needs } from "../types";
 import { assignedHandles, hasPhotonRoute, photonConfigured, photonSend, startPhoton } from "./photon";
 
 export type SendResult = { ok: boolean; via: "imessage" | "simulated"; error?: string };
@@ -34,12 +35,31 @@ export type LiveHousehold = Omit<Household, "messages"> & {
   driver?: string;
   /** Minutes to the shelter for the current trip (to resume after a restart). */
   tripShelterMin?: number;
+  /** The resident's private "track your ride" link for the current trip. Cleared on reset. */
+  track?: Track;
   /** Operator switch: does "Send alert" text this phone? */
   alertsOn: boolean;
   /** How they joined: operator added, web sign-up, or texted the number. */
   source?: "operator" | "signup" | "text";
   messages: LiveMessage[];
   notified: string[]; // vehicle ids we've already texted about
+};
+
+/** One trip, as the resident's tracking page sees it. Times are real clock times. */
+export type Track = {
+  token: string;
+  vehicleId: string;
+  vehicleName: string;
+  /** Minutes the texts quoted (the page counts down from these). */
+  etaMin: number;
+  toShelterMin: number;
+  from: LngLat;
+  dispatchedAt: number;
+  arriveAt: number;
+  boardAt: number;
+  shelterAt: number;
+  /** When the "outside" text went out: from then on, IN boards them. */
+  outsideAt?: number;
 };
 
 // Real-looking spots in west Altadena for live households (no real addresses used).
@@ -209,6 +229,8 @@ const SPANISH = /\b(hola|ayuda|necesito|no puedo|tenemos|somos|mi |mamá|mama|ab
 
 const SIGNUP = /^(evac|evacuaid|join|start|sign ?up|subscribe|hi|hello|hey|help)[.!]*$/i;
 const STOP = /^(stop|unsubscribe|cancel|quit|end)[.!]*$/i;
+/** "I'm seated" once the van is outside. */
+const IN_WORD = /^(in|i'?m in|im in|seated|on board|onboard|dentro|adentro|listo|lista)[.!]*$/i;
 const SIGNUP_REPLY =
   "You're signed up for EvacuAid. If an evacuation order covers your area, we'll message you here and ask if you're safe. You can also tell us now if anyone at home would need help leaving. Reply STOP to leave.";
 
@@ -237,6 +259,24 @@ export async function handleInbound(rawPhone: string, text: string, opts: { repl
     else existing.messages.push({ at: Date.now(), from: "evacuaid", text: reply, via: "simulated" });
     bump();
     return { reply, triage: null, household: existing };
+  }
+
+  // IN: they're seated, so the van leaves now instead of waiting.
+  const trip = existing?.conv?.case;
+  if (existing && IN_WORD.test(text.trim()) && trip?.vehicleId && (trip.status === "dispatched" || trip.status === "onboard")) {
+    existing.messages.push({ at: Date.now(), from: "resident", text });
+    const l = existing.language === "es" ? "es" : "en";
+    let reply: string | null;
+    if (trip.status === "onboard") reply = null; // already on the way: say nothing twice
+    else if (!existing.track?.outsideAt) reply = T.notOutsideYet[l];
+    else reply = boardNow(existing);
+    if (reply) {
+      if (opts.replyBySms) await send(existing, reply);
+      else existing.messages.push({ at: Date.now(), from: "evacuaid", text: reply, via: "simulated" });
+    }
+    existing.lastUpdate = Date.now();
+    bump();
+    return { reply: reply ?? "", triage: null, household: existing };
   }
 
   // Texting the number is how people sign up. "help" only counts as a sign-up
@@ -408,44 +448,117 @@ export async function dispatchLive(householdId: string, vehicle: { id: string; n
   h.driver = `${vehicle.name}, about ${etaMin} min`;
   h.summary = `${vehicle.name} dispatched · ${etaMin} min`;
   h.tripShelterMin = toShelterMin;
-  await send(h, T.dispatched[l](vehicle.name, etaMin));
+  const now = Date.now();
+  // A fresh, unguessable code for every trip: an earlier link stops working.
+  h.track = {
+    token: randomBytes(9).toString("base64url"),
+    vehicleId: vehicle.id,
+    vehicleName: vehicle.name,
+    etaMin,
+    toShelterMin,
+    from: FLEET.find((v) => v.id === vehicle.id)?.location ?? SHELTER.location,
+    dispatchedAt: now,
+    arriveAt: now,
+    boardAt: now,
+    shelterAt: now,
+  };
   runTrip(h, vehicle, "arriving", etaMin, toShelterMin);
+  await send(h, T.dispatched[l](vehicle.name, etaMin));
+  await send(h, trackText(l, h.track.token));
   bump();
 }
+
+/** Where residents open their tracking page. The live site reaches the same app. */
+const PUBLIC_URL = (process.env.PUBLIC_BASE_URL || "https://evacuid.us").replace(/\/$/, "");
+export const trackUrl = (token: string) => `${PUBLIC_URL}/t/${token}`;
+function trackText(l: "en" | "es", token: string) {
+  return T.track[l](trackUrl(token));
+}
+
+/** The trip behind a tracking code, or null once it ended or the drill was reset. */
+export function findTrack(token: string) {
+  if (!token || token.length < 10) return null;
+  for (const h of store.households.values()) {
+    if (h.track?.token === token) return { h, t: h.track };
+  }
+  return null;
+}
+
+const tripMs = (m: number) => Math.max(5, m) * DEMO_SECONDS_PER_MIN * 1000;
 
 /**
  * The rest of a live trip: van outside, on board, checked in. Each step is
  * re-checked against the saved case, so a restart can pick the trip back up.
+ * The resident can reply IN once seated to leave right away; otherwise the
+ * van leaves on its own after a short wait.
  */
 function runTrip(h: LiveHousehold, vehicle: { id: string; name: string }, from: "arriving" | "onboard", etaMin: number, toShelterMin: number) {
   const l = h.language === "es" ? "es" : "en";
-  const ms = (m: number) => Math.max(5, m) * DEMO_SECONDS_PER_MIN * 1000;
   const still = () => h.conv.case?.vehicleId === vehicle.id;
-  const checkIn = () =>
-    setTimeout(async () => {
-      if (!still()) return;
-      h.status = "out";
-      h.conv.case!.status = "done";
-      h.conv.stage = "out_done";
-      h.summary = "Checked in at the shelter";
-      h.driver = undefined;
-      await send(h, T.checkedIn[l]);
-      bump();
-    }, ms(toShelterMin));
-  if (from === "onboard") return checkIn();
+  // Record the schedule so the tracking page can move the van in step with the texts.
+  if (h.track && h.track.vehicleId === vehicle.id) {
+    const now = Date.now();
+    if (from === "arriving") {
+      h.track.arriveAt = now + tripMs(etaMin);
+      h.track.boardAt = h.track.arriveAt + tripMs(2);
+    } else {
+      h.track.arriveAt = Math.min(h.track.arriveAt, now);
+      h.track.boardAt = now;
+    }
+    h.track.shelterAt = h.track.boardAt + tripMs(toShelterMin);
+  }
+  if (from === "onboard") return scheduleCheckIn(h, vehicle.id, toShelterMin);
   setTimeout(async () => {
-    if (!still()) return;
+    if (!still() || h.conv.case?.status !== "dispatched") return;
+    if (h.track && h.track.vehicleId === vehicle.id) h.track.outsideAt = Date.now();
     await send(h, T.outside[l](vehicle.name));
+    bump();
+    // No reply? The van leaves after a short wait anyway.
     setTimeout(async () => {
       if (!still()) return;
-      h.status = "leaving";
-      h.conv.case!.status = "onboard";
-      h.summary = `On board ${vehicle.name} → shelter`;
-      await send(h, T.onboard[l]);
-      bump();
-      checkIn();
-    }, ms(2));
-  }, ms(etaMin));
+      const text = boardNow(h);
+      if (text) await send(h, text);
+    }, tripMs(2));
+  }, tripMs(etaMin));
+}
+
+/**
+ * The resident is on board. Runs once per trip, whether from their IN reply or
+ * the van's own timer: a second call does nothing, so nobody gets two texts.
+ * Returns the text to send, or null if they were already on board.
+ */
+function boardNow(h: LiveHousehold): string | null {
+  const c = h.conv.case;
+  if (!c?.vehicleId || c.status !== "dispatched") return null;
+  const l = h.language === "es" ? "es" : "en";
+  const toShelterMin = h.tripShelterMin ?? 8;
+  h.status = "leaving";
+  c.status = "onboard";
+  h.summary = `On board ${c.vehicleName ?? "the van"} → shelter`;
+  if (h.track && h.track.vehicleId === c.vehicleId) {
+    const now = Date.now();
+    h.track.arriveAt = Math.min(h.track.arriveAt, now);
+    h.track.boardAt = now;
+    h.track.shelterAt = now + tripMs(toShelterMin);
+  }
+  scheduleCheckIn(h, c.vehicleId, toShelterMin);
+  bump();
+  return T.onboard[l];
+}
+
+function scheduleCheckIn(h: LiveHousehold, vehicleId: string, toShelterMin: number) {
+  const l = h.language === "es" ? "es" : "en";
+  setTimeout(async () => {
+    const c = h.conv.case;
+    if (c?.vehicleId !== vehicleId || c.status !== "onboard") return; // once only
+    h.status = "out";
+    c.status = "done";
+    h.conv.stage = "out_done";
+    h.summary = "Checked in at the shelter";
+    h.driver = undefined;
+    await send(h, T.checkedIn[l]);
+    bump();
+  }, tripMs(toShelterMin));
 }
 
 // A restart mid-trip must not strand anyone: resume every trip still under way.
@@ -507,6 +620,8 @@ export function resetLive() {
     h.notified = [];
     h.summary = undefined;
     h.driver = undefined;
+    h.track = undefined; // every tracking link from the last drill stops working
+    h.tripShelterMin = undefined;
     h.alertsOn = true;
     h.lastUpdate = Date.now();
   }

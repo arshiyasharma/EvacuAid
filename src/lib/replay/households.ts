@@ -132,6 +132,18 @@ function convo(id: string, start: number) {
 }
 type C = ReturnType<typeof convo>;
 
+/** A tracking link for the demo stories: looks like a real one, made from the id (no RNG, so the replay doesn't shift). */
+function demoTrackUrl(id: string) {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  let x = 2166136261;
+  let code = "";
+  for (let i = 0; i < 12; i++) {
+    for (const ch of `${id}:${i}`) x = Math.imul(x ^ ch.charCodeAt(0), 16777619) >>> 0;
+    code += abc[x % abc.length];
+  }
+  return `https://evacuid.us/t/${code}`;
+}
+
 const rideCase = (people: number, wheelchair = false, medical = false): ReplayEvent["case"] => ({ kind: "ride", status: "review", people, wheelchair, medical });
 const aidCase = (aid: AidSize): ReplayEvent["case"] => ({ kind: "aid", status: "review", aid });
 
@@ -547,9 +559,10 @@ function buildHouseholds(): { households: SimHousehold[]; events: ReplayEvent[] 
       });
     } else {
       c.e(T.dispatched[l](best.v.name, best.eta), { case: { ...caseBase, status: "dispatched" }, summary: `${best.v.name} dispatched by ${operator} · ${best.eta} min` });
-      c.wait(best.eta);
+      c.e(T.track[l](demoTrackUrl(id)));
+      c.wait(best.eta - 0.2); // same total time as before the tracking text
       c.e(T.outside[l](best.v.name));
-      c.wait(2);
+      c.r("IN", {}, 2); // seated: the van leaves (same 2 min as before)
       c.e(T.onboard[l], { status: "leaving", case: { ...caseBase, status: "onboard" }, summary: `On board ${best.v.name} → shelter` });
     }
     c.wait(toShelter);
@@ -643,9 +656,11 @@ export function applyOperator(views: HouseholdView[], ops: OperatorOverlay, t: n
     const l: Lang = h.language === "es" ? "es" : "en";
     const base = { kind: (h.case?.kind === "check" ? "check" : "ride") as SimCase["kind"], vehicleName: d.vehicleName, etaMin: d.etaMin, handledBy: "You" };
     add(h, d.at, "evacuaid", T.dispatched[l](d.vehicleName, d.etaMin));
+    add(h, d.at, "evacuaid", T.track[l](demoTrackUrl(h.id)));
     apply(h, { case: { ...base, status: "dispatched" }, summary: `You dispatched ${d.vehicleName} · ${d.etaMin} min` });
     const there = d.at + d.etaMin * MIN;
     if (t >= there) add(h, there, "evacuaid", T.outside[l](d.vehicleName));
+    if (t >= there + 1.5 * MIN) add(h, there + 1.5 * MIN, "resident", "IN");
     if (t >= there + 2 * MIN) {
       add(h, there + 2 * MIN, "evacuaid", T.onboard[l]);
       apply(h, { status: "leaving", case: { ...base, status: "onboard" }, summary: `On board ${d.vehicleName} → shelter` });

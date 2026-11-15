@@ -203,8 +203,16 @@ export const T = {
       `🚐 LA AYUDA VA EN CAMINO\n\n${vehicle} va hacia usted, unos ${eta} min.\n\nEspere junto a la puerta con el teléfono encendido. El conductor le avisará cuando llegue.`,
   },
   outside: {
-    en: (vehicle: string) => `🚐 ${vehicle} is OUTSIDE your home now.`,
-    es: (vehicle: string) => `🚐 ${vehicle} está AFUERA de su casa ahora.`,
+    en: (vehicle: string) => `🚐 ${vehicle} is OUTSIDE your home now.\n\nReply IN once you're seated.`,
+    es: (vehicle: string) => `🚐 ${vehicle} está AFUERA de su casa ahora.\n\nResponda LISTO cuando esté sentado.`,
+  },
+  track: {
+    en: (url: string) => `📍 Track your ride live: ${url}`,
+    es: (url: string) => `📍 Siga su transporte en vivo: ${url}`,
+  },
+  notOutsideYet: {
+    en: "Your ride isn't outside yet. We'll text you the moment it arrives.",
+    es: "Su transporte aún no llegó. Le avisaremos en cuanto llegue.",
   },
   onboard: {
     en: `You're on board. Next stop: ${SHELTER.en}`,

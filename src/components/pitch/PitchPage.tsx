@@ -314,7 +314,7 @@ function Problems() {
   );
 }
 
-const FLOW_EVAC = ["Alert, two-way, hours early", "Reply in any language", "A case: ride, aid, or door knock", "Operator dispatches", "Checked in at the shelter"];
+const FLOW_EVAC = ["Alert, two-way, hours early", "Reply in any language", "A case: ride, aid, or door knock", "Operator dispatches; they track the van live", "Checked in at the shelter"];
 const FLOW_MONEY = ["Two questions size the aid", "Five bank checks on Nessie", "Donor pool releases on Solana", "A card that only evacuates", "Every dollar traceable"];
 
 /** 5. One app for both. The flows build, then the proof. */

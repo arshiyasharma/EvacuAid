@@ -29,7 +29,8 @@ EvacuAid is an emergency operations system for a county: one console, one relief
 - **Any words, any language.** People don't reply "3". They write *"my mom can't walk and the car's in the shop"*, or *"mi esposo usa silla de ruedas"*. **Gemini** turns that into a structured case in about 2 seconds: needs, who's left behind, emergency or not, language, and a one-line summary for the operator. It replies in their language.
 - **A case, and the best van.** Ride, aid, or a door knock. EvacuAid suggests the closest free vehicle that can actually carry them (a wheelchair user only gets a wheelchair-capable van).
 - **A person decides.** An operator approves every dispatch in one click. AI suggests; humans decide.
-- **The resident sees every step,** by text: *dispatched, 6 min away* → *outside* → *on board* → *checked in at the shelter*.
+- **The resident sees every step,** by text: *dispatched, 6 min away* → *outside* → *on board* → *checked in at the shelter*. When the van is outside they reply **IN** once seated and it leaves right away (no reply, it leaves after a short wait). Every step texts once, never twice, and the last text reminds them to reply **STOP**.
+- **They can watch the van come.** The dispatch text carries a private link (`evacuid.us/t/…`) to a live page: the van moving on a map toward their home, then to the shelter, a countdown, and the four steps, in English or Spanish. Each trip gets a fresh, unguessable code that shows only that trip (no name, no phone). Dispatching a new van or resetting the drill ends the old link. The van's position is estimated from the trip plan; with a real fleet it would come from the driver's phone.
 - **Nobody goes silent.** No reply means two more texts, then a door knock. Every case stays open until someone is checked in.
 
 ### Who goes first: a race between the fire and the household

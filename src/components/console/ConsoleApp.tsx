@@ -29,7 +29,7 @@ import { useReplayClock } from "./useReplayClock";
 
 const MINUTE = 60_000;
 
-export type ConsoleHousehold = HouseholdView & { live?: boolean; name?: string; summary?: string; case?: SimCase };
+export type ConsoleHousehold = HouseholdView & { live?: boolean; name?: string; summary?: string; case?: SimCase; trackToken?: string };
 
 export function ConsoleApp() {
   const clock = useReplayClock(REPLAY_START, REPLAY_END);
@@ -70,6 +70,7 @@ export function ConsoleApp() {
       doorKnock: h.conv?.doorKnock,
       leftBehind: h.conv?.leftBehind,
       case: h.conv?.case as SimCase | undefined,
+      trackToken: h.track?.token,
     }));
     const households = [...real, ...sim];
     const hazard = hazardAt(minute);

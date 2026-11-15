@@ -53,24 +53,59 @@ ok("operator dispatches Paratransit 1", d.status === 200, `${d.status}${d.json.e
 h = await me();
 ok("resident told the van is coming", h?.conv?.case?.status === "dispatched", h?.driver ?? "");
 
-// 4. The trip runs: outside → on board → checked in.
+// The dispatch text carries a private tracking link; the page's data follows the trip.
+const linkMsg = [...(h?.messages ?? [])].reverse().find((m: any) => /\/t\/[A-Za-z0-9_-]{10,}/.test(m.text ?? ""));
+const trackCode = linkMsg?.text.match(/\/t\/([A-Za-z0-9_-]{10,})/)?.[1];
+ok("resident got a tracking link by text", Boolean(trackCode), linkMsg ? `"${linkMsg.text.replace(/\n/g, " ").slice(0, 70)}"` : "no link in messages");
+const track = async () => {
+  const r = await fetch(`${BASE}/api/track/${trackCode}`);
+  return { status: r.status, json: (await r.json().catch(() => ({}))) as any };
+};
+const page = await fetch(`${BASE}/t/${trackCode}`);
+ok("tracking page opens", page.status === 200, String(page.status));
+const t1 = await track();
+ok("tracking data: van on the way", t1.status === 200 && t1.json.step === "coming", `${t1.status} · ${t1.json.step} · ${t1.json.vehicleName}`);
+ok("tracking data has no name or phone", t1.status === 200 && !JSON.stringify(t1.json).includes(PHONE) && !("name" in t1.json) && !("phone" in t1.json));
+const bad = await fetch(`${BASE}/api/track/notARealCode123`);
+ok("a made-up code is refused", bad.status === 404, String(bad.status));
+const trackSteps = new Set<string>([t1.json.step]);
+
+// 4. The trip runs: outside → resident replies IN → on board at once → checked in.
 const t0 = Date.now();
 let seen = h?.conv?.case?.status;
+let saidIn = false;
 while (Date.now() - t0 < 8 * 60_000) {
-  await sleep(5000);
+  await sleep(2000);
   h = await me();
+  if (trackCode) trackSteps.add((await track()).json.step);
   const st = h?.conv?.case?.status;
   if (st !== seen) {
     console.log(`        ${Math.round((Date.now() - t0) / 1000)}s · ${st} · "${h?.summary ?? ""}"`);
     seen = st;
   }
+  const outside = (h?.messages ?? []).some((m: any) => m.from === "evacuaid" && /OUTSIDE/.test(m.text));
+  if (outside && !saidIn && st === "dispatched") {
+    saidIn = true;
+    const r1 = await post("/api/inbound", { phone: PHONE, text: "IN" });
+    const after = (await me())?.conv?.case?.status;
+    ok('resident replies "IN": on board at once', after === "onboard" && /board/i.test(r1.json.reply ?? ""), `${after} · "${String(r1.json.reply ?? "").slice(0, 50)}"`);
+    const r2 = await post("/api/inbound", { phone: PHONE, text: "in" });
+    ok('a second "in" sends nothing', (r2.json.reply ?? "") === "", `"${r2.json.reply ?? ""}"`);
+    seen = after;
+  }
   if (st === "done") break;
 }
 ok("checked in at the shelter", seen === "done", `${Math.round((Date.now() - t0) / 1000)}s`);
+const sent = (h?.messages ?? []).filter((m: any) => m.from === "evacuaid").map((m: any) => m.text as string);
+const count = (re: RegExp) => sent.filter((t) => re.test(t)).length;
+ok("exactly one of each trip text", [/HELP IS ON THE WAY/, /Track your ride/, /OUTSIDE/, /on board/i, /checked in/i].every((re) => count(re) === 1), ["way", "track", "outside", "board", "in"].map((n, i) => `${n}×${count([/HELP IS ON THE WAY/, /Track your ride/, /OUTSIDE/, /on board/i, /checked in/i][i])}`).join(" "));
+ok("safe text reminds them to reply STOP", /STOP/.test(sent.find((t) => /checked in/i.test(t)) ?? ""));
+ok("tracking page followed every step", ["coming", "outside", "onboard", "safe"].every((x) => trackSteps.has(x)), [...trackSteps].join(" → "));
 
 // 5. Clean up the fictional resident.
 const del = await fetch(`${BASE}/api/roster?phone=${encodeURIComponent(PHONE)}`, { method: "DELETE", headers: H });
 ok("fictional resident removed", del.status < 400, String(del.status));
+if (trackCode) ok("their tracking link stops working", (await track()).status === 404);
 
 console.log(`\n${failed ? `${failed} FAILED` : "All steps passed"}\n`);
 process.exit(failed ? 1 : 0);

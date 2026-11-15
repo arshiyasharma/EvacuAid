@@ -119,6 +119,11 @@ export function CaseCard({ h, suggestion, busy, at, operator, onDone }: Props) {
         </span>
       </div>
       <p className="mt-2 text-[14.5px] text-muted">{k.what}</p>
+      {h.trackToken && (c.status === "dispatched" || c.status === "onboard" || c.status === "done") && (
+        <a href={`/t/${h.trackToken}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[13.5px] text-out hover:underline">
+          📍 The resident&apos;s live tracking page ↗
+        </a>
+      )}
       {facts.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {facts.map((f) => (
